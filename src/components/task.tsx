@@ -10,7 +10,22 @@ interface Task {
   id: number;
   title: string;
   completed: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
+
+// Function to format date and time
+const formatDateTime = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+};
 
 export default function CreativeQualityCard() {
   // const metrics = [
@@ -331,6 +346,14 @@ export default function CreativeQualityCard() {
                           >
                             {task.title}
                           </h3>
+                          {/* Date and Time */}
+                          <div className="flex justify-between items-center mt-1">
+                            <div></div>
+                            <p className="text-xs text-gray-400">
+                              {task.updatedAt ? formatDateTime(task.updatedAt) : 
+                               task.createdAt ? formatDateTime(task.createdAt) : ''}
+                            </p>
+                          </div>
                         </div>
 
                         {/* Action Buttons */}
