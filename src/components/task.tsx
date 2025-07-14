@@ -18,15 +18,22 @@ interface Task {
 
 // Function to format date and time
 const formatDateTime = (dateString: string) => {
-  const date = new Date(dateString);
-  return date.toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
+  try {
+    if (!dateString) return "";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "";
+  }
 };
 
 export default function CreativeQualityCard() {
@@ -56,7 +63,7 @@ export default function CreativeQualityCard() {
 
   // Get unique groups and categories for filtering
   const uniqueGroups = Array.from(
-    new Set(tasks.map((task) => task.group).filter(Boolean))
+    new Set(tasks?.map((task) => task?.group).filter(Boolean) || [])
   );
   const categories = ["urgent", "later", "assigned", "completed"];
 
@@ -77,10 +84,10 @@ export default function CreativeQualityCard() {
   };
 
   // Filter tasks based on selected group and category
-  const filteredTasks = tasks.filter((task) => {
-    const groupMatch = filterGroup === "all" || task.group === filterGroup;
+  const filteredTasks = (tasks || []).filter((task) => {
+    const groupMatch = filterGroup === "all" || task?.group === filterGroup;
     const categoryMatch =
-      filterCategory === "all" || task.category === filterCategory;
+      filterCategory === "all" || task?.category === filterCategory;
     return groupMatch && categoryMatch;
   });
 
@@ -115,10 +122,15 @@ export default function CreativeQualityCard() {
 
   const fetchTasks = async () => {
     setIsLoading(true);
-    const res = await getAllTasks();
-
-    setTasks(res?.data);
-    setIsLoading(false);
+    try {
+      const res = await getAllTasks();
+      setTasks(res?.data || []);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      setTasks([]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Simulate fetching tasks from backend
@@ -158,11 +170,11 @@ export default function CreativeQualityCard() {
 
   const toggleTask = async (id: number) => {
     try {
-      const getTaskStatus = tasks.find((task) => task.id === id);
+      const getTaskStatus = tasks?.find((task) => task?.id === id);
       if (!getTaskStatus) throw new Error("Task not found");
       await updateTask(
         id,
-        getTaskStatus?.title,
+        getTaskStatus?.title || "",
         getTaskStatus?.completed ? false : true
       );
       fetchTasks();
@@ -191,11 +203,12 @@ export default function CreativeQualityCard() {
   };
 
   const startEditing = (task: Task) => {
-    setEditingTaskId(task.id);
-    setEditingTitle(task.title);
-    setEditingCompleted(task.completed);
-    setEditingGroup(task.group);
-    setEditingCategory(task.category);
+    if (!task) return;
+    setEditingTaskId(task?.id || 0);
+    setEditingTitle(task?.title || "");
+    setEditingCompleted(task?.completed || false);
+    setEditingGroup(task?.group || "");
+    setEditingCategory(task?.category || "later");
   };
 
   const cancelEditing = () => {
@@ -210,7 +223,7 @@ export default function CreativeQualityCard() {
     if (!editingTitle.trim()) return;
 
     try {
-      const getTaskStatus = tasks.find((task) => task.id === id);
+      const getTaskStatus = tasks?.find((task) => task?.id === id);
       await updateTask(
         id,
         editingTitle.trim(),
@@ -245,9 +258,9 @@ export default function CreativeQualityCard() {
 
   const completedCount =
     filteredTasks?.length > 0
-      ? filteredTasks.filter((task) => task.completed).length
+      ? filteredTasks.filter((task) => task?.completed).length
       : 0;
-  const totalCount = filteredTasks.length;
+  const totalCount = filteredTasks?.length || 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -270,22 +283,22 @@ export default function CreativeQualityCard() {
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {filteredTasks.filter((task) => task.category === "urgent")
-                  .length || 0}
+                {filteredTasks?.filter((task) => task?.category === "urgent")
+                  ?.length || 0}
               </div>
               <div className="text-sm text-gray-500">🔴 Urgent</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
-                {filteredTasks.filter((task) => task.category === "assigned")
-                  .length || 0}
+                {filteredTasks?.filter((task) => task?.category === "assigned")
+                  ?.length || 0}
               </div>
               <div className="text-sm text-gray-500">🟡 Assigned</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {filteredTasks.filter((task) => task.category === "completed")
-                  .length || 0}
+                {filteredTasks?.filter((task) => task?.category === "completed")
+                  ?.length || 0}
               </div>
               <div className="text-sm text-gray-500">🟢 Completed</div>
             </div>
@@ -362,11 +375,11 @@ export default function CreativeQualityCard() {
                 className="px-3 py-1 border border-gray-300 rounded-lg text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
               >
                 <option value="all">All Groups</option>
-                {uniqueGroups.map((group) => (
+                {uniqueGroups?.map((group) => (
                   <option key={group} value={group}>
                     {group}
                   </option>
-                ))}
+                )) || []}
               </select>
             </div>
 
@@ -380,15 +393,15 @@ export default function CreativeQualityCard() {
                 className="px-3 py-1 border border-gray-300 rounded-lg text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
               >
                 <option value="all">All Categories</option>
-                {categories.map((category) => (
+                {categories?.map((category) => (
                   <option key={category} value={category}>
                     {category === "urgent" && "🔴"}
                     {category === "later" && "🔵"}
                     {category === "assigned" && "🟡"}
                     {category === "completed" && "🟢"}
-                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                    {category?.charAt(0)?.toUpperCase() + category?.slice(1)}
                   </option>
-                ))}
+                )) || []}
               </select>
             </div>
           </div>
@@ -401,7 +414,7 @@ export default function CreativeQualityCard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
               <p className="text-gray-500">Loading tasks...</p>
             </div>
-          ) : filteredTasks.length === 0 ? (
+          ) : (filteredTasks?.length || 0) === 0 ? (
             <div className="p-8 text-center">
               <ListTodo className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg">No tasks found</p>
@@ -416,16 +429,16 @@ export default function CreativeQualityCard() {
               {filteredTasks?.length > 0 ? (
                 filteredTasks.map((task, index) => (
                   <div
-                    key={task.id}
+                    key={task?.id || index}
                     className={`p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors ${
-                      task.completed ? "bg-green-50" : ""
-                    } ${editingTaskId === task.id ? "bg-blue-50" : ""}`}
+                      task?.completed ? "bg-green-50" : ""
+                    } ${editingTaskId === task?.id ? "bg-blue-50" : ""}`}
                     style={{
                       animationDelay: `${index * 100}ms`,
                       animation: "fadeInUp 0.5s ease-out forwards",
                     }}
                   >
-                    {editingTaskId === task.id ? (
+                    {editingTaskId === task?.id ? (
                       // Edit Mode
                       <>
                         {/* Complete Checkbox in Edit Mode */}
@@ -481,7 +494,7 @@ export default function CreativeQualityCard() {
                         {/* Save and Cancel Buttons */}
                         <div className="flex gap-2">
                           <button
-                            onClick={() => saveTask(task.id)}
+                            onClick={() => saveTask(task?.id || 0)}
                             className="flex-shrink-0 p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-all"
                             title="Save changes"
                           >
@@ -501,46 +514,48 @@ export default function CreativeQualityCard() {
                       <>
                         {/* Complete Button */}
                         <button
-                          onClick={() => toggleTask(task.id)}
+                          onClick={() => toggleTask(task?.id || 0)}
                           className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                            task.completed
+                            task?.completed
                               ? "bg-green-500 border-green-500 text-white"
                               : "border-gray-300 hover:border-green-500"
                           }`}
                         >
-                          {task.completed && <Check className="w-4 h-4" />}
+                          {task?.completed && <Check className="w-4 h-4" />}
                         </button>
 
                         {/* Task Content */}
                         <div className="flex-1 min-w-0">
                           <h3
                             className={`font-medium transition-all ${
-                              task.completed
+                              task?.completed
                                 ? "text-gray-500 line-through"
                                 : "text-gray-800"
                             }`}
                           >
-                            {task.title}
+                            {task?.title || "Untitled Task"}
                           </h3>
 
                           {/* Group and Category Tags */}
                           <div className="flex items-center gap-2 mt-2">
-                            {task.group && (
+                            {task?.group && (
                               <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
                                 🏷️ {task.group}
                               </span>
                             )}
                             <span
                               className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
-                                task.category
+                                task?.category || "later"
                               )}`}
                             >
-                              {task.category === "urgent" && "🔴"}
-                              {task.category === "later" && "🔵"}
-                              {task.category === "assigned" && "🟡"}
-                              {task.category === "completed" && "🟢"}
-                              {task.category.charAt(0).toUpperCase() +
-                                task.category.slice(1)}
+                              {task?.category === "urgent" && "🔴"}
+                              {task?.category === "later" && "🔵"}
+                              {task?.category === "assigned" && "🟡"}
+                              {task?.category === "completed" && "🟢"}
+                              {(task?.category || "later")
+                                .charAt(0)
+                                .toUpperCase() +
+                                (task?.category || "later").slice(1)}
                             </span>
                           </div>
 
@@ -548,9 +563,9 @@ export default function CreativeQualityCard() {
                           <div className="flex justify-between items-center mt-1">
                             <div></div>
                             <p className="text-xs text-gray-400">
-                              {task.updatedAt
+                              {task?.updatedAt
                                 ? formatDateTime(task.updatedAt)
-                                : task.createdAt
+                                : task?.createdAt
                                 ? formatDateTime(task.createdAt)
                                 : ""}
                             </p>
@@ -570,7 +585,7 @@ export default function CreativeQualityCard() {
 
                           {/* Delete Button */}
                           <button
-                            onClick={() => deleteTask(task.id)}
+                            onClick={() => deleteTask(task?.id || 0)}
                             className="flex-shrink-0 p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
                             title="Delete task"
                           >
