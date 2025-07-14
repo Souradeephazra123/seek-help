@@ -16,14 +16,19 @@ export async function getAllTasks() {
   }
 }
 
-export async function AddTask(title: string, completed = false) {
+export async function AddTask(
+  title: string,
+  completed = false,
+  group = "General",
+  category: "urgent" | "later" | "assigned" | "completed" = "later"
+) {
   try {
     const res = await fetch(`${process.env.API_URL}/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title, completed }),
+      body: JSON.stringify({ title, completed, group, category }),
     });
 
     return res.json();

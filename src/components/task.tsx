@@ -10,6 +10,8 @@ interface Task {
   id: number;
   title: string;
   completed: boolean;
+  group: string;
+  category: "urgent" | "later" | "assigned" | "completed";
   createdAt: string;
   updatedAt: string;
 }
@@ -17,13 +19,13 @@ interface Task {
 // Function to format date and time
 const formatDateTime = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
 };
 
@@ -37,10 +39,50 @@ export default function CreativeQualityCard() {
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskGroup, setNewTaskGroup] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState<
+    "urgent" | "later" | "assigned" | "completed"
+  >("later");
   const [isLoading, setIsLoading] = useState(true);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [editingCompleted, setEditingCompleted] = useState(false);
+  const [editingGroup, setEditingGroup] = useState("");
+  const [editingCategory, setEditingCategory] = useState<
+    "urgent" | "later" | "assigned" | "completed"
+  >("later");
+  const [filterGroup, setFilterGroup] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+
+  // Get unique groups and categories for filtering
+  const uniqueGroups = Array.from(
+    new Set(tasks.map((task) => task.group).filter(Boolean))
+  );
+  const categories = ["urgent", "later", "assigned", "completed"];
+
+  // Get category colors
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case "urgent":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "later":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "assigned":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "completed":
+        return "bg-green-100 text-green-800 border-green-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  // Filter tasks based on selected group and category
+  const filteredTasks = tasks.filter((task) => {
+    const groupMatch = filterGroup === "all" || task.group === filterGroup;
+    const categoryMatch =
+      filterCategory === "all" || task.category === filterCategory;
+    return groupMatch && categoryMatch;
+  });
 
   // Calculate cumulative angles for positioning
   // let cumulativeAngle = 0
@@ -90,11 +132,18 @@ export default function CreativeQualityCard() {
 
     const newTask = {
       title: newTaskTitle.trim(),
+      group: newTaskGroup.trim() || "General",
+      category: newTaskCategory,
       completed: false,
     };
 
     try {
-      await AddTask(newTask.title, newTask.completed);
+      await AddTask(
+        newTask.title,
+        newTask.completed,
+        newTask.group,
+        newTask.category
+      );
     } catch (error) {
       console.error("Error adding task:", error);
       return;
@@ -103,6 +152,8 @@ export default function CreativeQualityCard() {
     // setTasks((prev) => [newTask, ...prev]);
     fetchTasks();
     setNewTaskTitle("");
+    setNewTaskGroup("");
+    setNewTaskCategory("later");
   };
 
   const toggleTask = async (id: number) => {
@@ -143,12 +194,16 @@ export default function CreativeQualityCard() {
     setEditingTaskId(task.id);
     setEditingTitle(task.title);
     setEditingCompleted(task.completed);
+    setEditingGroup(task.group);
+    setEditingCategory(task.category);
   };
 
   const cancelEditing = () => {
     setEditingTaskId(null);
     setEditingTitle("");
     setEditingCompleted(false);
+    setEditingGroup("");
+    setEditingCategory("later");
   };
 
   const saveTask = async (id: number) => {
@@ -184,11 +239,15 @@ export default function CreativeQualityCard() {
     setEditingTaskId(null);
     setEditingTitle("");
     setEditingCompleted(false);
+    setEditingGroup("");
+    setEditingCategory("later");
   };
 
   const completedCount =
-    tasks?.length > 0 ? tasks.filter((task) => task.completed).length : 0;
-  const totalCount = tasks.length;
+    filteredTasks?.length > 0
+      ? filteredTasks.filter((task) => task.completed).length
+      : 0;
+  const totalCount = filteredTasks.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -202,7 +261,7 @@ export default function CreativeQualityCard() {
           <p className="text-gray-600">Stay organized and get things done</p>
 
           {/* Stats */}
-          <div className="flex justify-center gap-6 mt-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-indigo-600">
                 {totalCount || 0}
@@ -210,24 +269,34 @@ export default function CreativeQualityCard() {
               <div className="text-sm text-gray-500">Total Tasks</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {completedCount || 0}
+              <div className="text-2xl font-bold text-red-600">
+                {filteredTasks.filter((task) => task.category === "urgent")
+                  .length || 0}
               </div>
-              <div className="text-sm text-gray-500">Completed</div>
+              <div className="text-sm text-gray-500">🔴 Urgent</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                {(totalCount - completedCount )|| 0}
+              <div className="text-2xl font-bold text-yellow-600">
+                {filteredTasks.filter((task) => task.category === "assigned")
+                  .length || 0}
               </div>
-              <div className="text-sm text-gray-500">Pending</div>
+              <div className="text-sm text-gray-500">🟡 Assigned</div>
+            </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-green-600">
+                {filteredTasks.filter((task) => task.category === "completed")
+                  .length || 0}
+              </div>
+              <div className="text-sm text-gray-500">🟢 Completed</div>
             </div>
           </div>
         </div>
 
         {/* Add Task Form */}
         <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-          <form onSubmit={addTask} className="flex gap-3">
-            <div className="flex-1">
+          <form onSubmit={addTask} className="space-y-4">
+            {/* Task Title */}
+            <div>
               <input
                 type="text"
                 value={newTaskTitle}
@@ -237,14 +306,92 @@ export default function CreativeQualityCard() {
                 required
               />
             </div>
-            <button
-              type="submit"
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline">Add Task</span>
-            </button>
+
+            {/* Group and Category Row */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={newTaskGroup}
+                  onChange={(e) => setNewTaskGroup(e.target.value)}
+                  placeholder="Group (e.g., Company, Personal)"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 placeholder:text-gray-500 text-black focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                />
+              </div>
+              <div className="flex-1">
+                <select
+                  value={newTaskCategory}
+                  onChange={(e) =>
+                    setNewTaskCategory(
+                      e.target.value as
+                        | "urgent"
+                        | "later"
+                        | "assigned"
+                        | "completed"
+                    )
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 text-black focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
+                >
+                  <option value="urgent">🔴 Urgent</option>
+                  <option value="later">🔵 Later</option>
+                  <option value="assigned">🟡 Assigned</option>
+                  <option value="completed">🟢 Completed</option>
+                </select>
+              </div>
+              <button
+                type="submit"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">Add Task</span>
+              </button>
+            </div>
           </form>
+        </div>
+
+        {/* Filter Controls */}
+        <div className="bg-white rounded-xl shadow-lg p-4 mb-6">
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                Filter by Group:
+              </span>
+              <select
+                value={filterGroup}
+                onChange={(e) => setFilterGroup(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-lg text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                <option value="all">All Groups</option>
+                {uniqueGroups.map((group) => (
+                  <option key={group} value={group}>
+                    {group}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">
+                Filter by Category:
+              </span>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+                className="px-3 py-1 border border-gray-300 rounded-lg text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
+              >
+                <option value="all">All Categories</option>
+                {categories.map((category) => (
+                  <option key={category} value={category}>
+                    {category === "urgent" && "🔴"}
+                    {category === "later" && "🔵"}
+                    {category === "assigned" && "🟡"}
+                    {category === "completed" && "🟢"}
+                    {category.charAt(0).toUpperCase() + category.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {/* Task List */}
@@ -254,18 +401,20 @@ export default function CreativeQualityCard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
               <p className="text-gray-500">Loading tasks...</p>
             </div>
-          ) : tasks.length === 0 ? (
+          ) : filteredTasks.length === 0 ? (
             <div className="p-8 text-center">
               <ListTodo className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No tasks yet</p>
+              <p className="text-gray-500 text-lg">No tasks found</p>
               <p className="text-gray-400">
-                Add your first task above to get started!
+                {filterGroup !== "all" || filterCategory !== "all"
+                  ? "Try adjusting your filters or add a new task!"
+                  : "Add your first task above to get started!"}
               </p>
             </div>
           ) : (
             <div className="divide-y divide-gray-100">
-              {tasks?.length > 0 ? (
-                tasks.map((task, index) => (
+              {filteredTasks?.length > 0 ? (
+                filteredTasks.map((task, index) => (
                   <div
                     key={task.id}
                     className={`p-4 flex items-center gap-4 hover:bg-gray-50 transition-colors ${
@@ -292,7 +441,7 @@ export default function CreativeQualityCard() {
                         </button>
 
                         {/* Edit Input */}
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 space-y-2">
                           <input
                             type="text"
                             value={editingTitle}
@@ -300,6 +449,33 @@ export default function CreativeQualityCard() {
                             className="w-full px-3 py-2 border border-indigo-300 rounded-lg focus:ring-2 text-black focus:ring-indigo-500 focus:border-transparent outline-none"
                             autoFocus
                           />
+                          <div className="flex gap-2">
+                            <input
+                              type="text"
+                              value={editingGroup}
+                              onChange={(e) => setEditingGroup(e.target.value)}
+                              placeholder="Group"
+                              className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                            <select
+                              value={editingCategory}
+                              onChange={(e) =>
+                                setEditingCategory(
+                                  e.target.value as
+                                    | "urgent"
+                                    | "later"
+                                    | "assigned"
+                                    | "completed"
+                                )
+                              }
+                              className="flex-1 px-3 py-1 border border-gray-300 rounded text-sm text-black focus:ring-2 focus:ring-indigo-500 outline-none"
+                            >
+                              <option value="urgent">🔴 Urgent</option>
+                              <option value="later">🔵 Later</option>
+                              <option value="assigned">🟡 Assigned</option>
+                              <option value="completed">🟢 Completed</option>
+                            </select>
+                          </div>
                         </div>
 
                         {/* Save and Cancel Buttons */}
@@ -346,12 +522,37 @@ export default function CreativeQualityCard() {
                           >
                             {task.title}
                           </h3>
+
+                          {/* Group and Category Tags */}
+                          <div className="flex items-center gap-2 mt-2">
+                            {task.group && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200">
+                                🏷️ {task.group}
+                              </span>
+                            )}
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
+                                task.category
+                              )}`}
+                            >
+                              {task.category === "urgent" && "🔴"}
+                              {task.category === "later" && "🔵"}
+                              {task.category === "assigned" && "🟡"}
+                              {task.category === "completed" && "🟢"}
+                              {task.category.charAt(0).toUpperCase() +
+                                task.category.slice(1)}
+                            </span>
+                          </div>
+
                           {/* Date and Time */}
                           <div className="flex justify-between items-center mt-1">
                             <div></div>
                             <p className="text-xs text-gray-400">
-                              {task.updatedAt ? formatDateTime(task.updatedAt) : 
-                               task.createdAt ? formatDateTime(task.createdAt) : ''}
+                              {task.updatedAt
+                                ? formatDateTime(task.updatedAt)
+                                : task.createdAt
+                                ? formatDateTime(task.createdAt)
+                                : ""}
                             </p>
                           </div>
                         </div>
